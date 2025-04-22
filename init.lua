@@ -91,8 +91,8 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
-
+vim.g.have_nerd_font = true
+vim.opt.termguicolors = true
 -- [[ Setting options ]]
 -- See `:help vim.opt`
 -- NOTE: You can change these options as you wish!
@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -154,7 +154,7 @@ vim.opt.inccommand = 'split'
 vim.opt.cursorline = true
 
 -- Minimal number of screen lines to keep above and below the cursor.
-vim.opt.scrolloff = 10
+vim.opt.scrolloff = 30
 
 -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
 -- instead raise a dialog asking if you wish to save the current file(s)
@@ -180,10 +180,10 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- TIP: Disable arrow keys in normal mode
--- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
--- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
--- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
--- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
+vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
+vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
+vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
@@ -193,6 +193,41 @@ vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left wind
 vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+
+vim.keymap.set('v', '<leader>gh', function()
+  local buf = vim.api.nvim_get_current_buf()
+  local filepath = vim.api.nvim_buf_get_name(buf)
+  local start_line = vim.fn.line 'v'
+  local end_line = vim.fn.line '.'
+  local top = math.min(start_line, end_line)
+  local bottom = math.max(start_line, end_line)
+
+  local git_root = vim.fn.systemlist('git rev-parse --show-toplevel')[1]
+  if not git_root or git_root == '' then
+    print 'Not inside a Git repo'
+    return
+  end
+
+  git_root = git_root:gsub('\\', '/')
+  filepath = filepath:gsub('\\', '/')
+
+  local rel_path = filepath:sub(#git_root + 2)
+
+  local remote = vim.fn.systemlist('git config --get remote.origin.url')[1]
+  if not remote or remote == '' then
+    print 'No remote.origin.url found'
+    return
+  end
+
+  remote = remote:gsub('%.git$', '')
+  remote = remote:gsub('git@github.com:', 'https://github.com/')
+  remote = remote:gsub('https://github.com/', 'https://github.com/') -- just in case
+
+  local branch = vim.fn.systemlist('git rev-parse --abbrev-ref HEAD')[1]
+  local url = string.format('%s/blob/%s/%s#L%d-L%d', remote, branch, rel_path, top, bottom)
+  vim.fn.setreg('+', url)
+  vim.notify('📋 GitHub link copied to clipboard:\n' .. url)
+end, { desc = 'Copy GitHub link to visual selection' })
 
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
 -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
@@ -226,6 +261,7 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end ---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
+local bufferline
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -333,7 +369,6 @@ require('lazy').setup({
           F12 = '<F12>',
         },
       },
-
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch' },
@@ -420,11 +455,11 @@ require('lazy').setup({
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-      vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
-      vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
-      vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
+      vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
+      vim.keymap.set('n', '<leader>fd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
@@ -663,30 +698,15 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
-        -- rust_analyzer = {},
-        -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-        --
-        -- Some languages (like typescript) have entire language plugins that can be useful:
-        --    https://github.com/pmizio/typescript-tools.nvim
-        --
-        -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
-        --
-
+        gopls = {},
+        pyright = {},
+        ts_ls = {},
         lua_ls = {
-          -- cmd = { ... },
-          -- filetypes = { ... },
-          -- capabilities = {},
           settings = {
             Lua = {
               completion = {
                 callSnippet = 'Replace',
               },
-              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
             },
           },
         },
@@ -768,7 +788,26 @@ require('lazy').setup({
       },
     },
   },
-
+  {
+    'akinsho/bufferline.nvim',
+    version = '*',
+    dependencies = 'nvim-tree/nvim-web-devicons',
+    config = function()
+      bufferline = require 'bufferline'
+      bufferline.setup {
+        options = {
+          mode = 'buffers',
+          offsets = { {
+            filetype = 'NvimTree',
+            separator = true,
+            text_align = 'left',
+          } },
+          diagnostics = 'nvim_lsp',
+          numbers = 'ordinal',
+        },
+      }
+    end,
+  },
   { -- Autocompletion
     'saghen/blink.cmp',
     event = 'VimEnter',
@@ -867,32 +906,101 @@ require('lazy').setup({
       signature = { enabled = true },
     },
   },
-
   { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
+    'xiantang/darcula-dark.nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     config = function()
       ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
+      require('darcula').setup {
         styles = {
           comments = { italic = false }, -- Disable italics in comments
         },
       }
 
       -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'darcula-dark'
     end,
   },
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons',
+      'MunifTanjim/nui.nvim',
+      -- {"3rd/image.nvim", opts = {}},
+    },
+    lazy = false,
+    keys = {
+      { '<C-n>', '<cmd>Neotree toggle<CR>', desc = 'Toggle Neo-tree' },
+    },
+    opts = {
+      -- your Neo-tree config here
+    },
+  },
+  {
+    'folke/todo-comments.nvim',
+    event = 'VimEnter',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    opts = {
+      signs = true, -- no signs in the gutter
+      keywords = {
+        TODO = { icon = '', color = 'info', alt = { 'TLDR' } },
+        FIX = { icon = '', color = 'error', alt = { 'FIXME', 'BUG', 'FIXIT', 'ISSUE' } },
+        NOTE = { icon = '', color = 'hint', alt = { 'INSIGHT' } },
+        HACK = { icon = '', color = 'warning' },
+        HMM = { icon = '?', color = 'warning', alt = { 'IMPORTANT' } },
+      },
+    },
+  },
+  {
+    'folke/snacks.nvim',
+    priority = 1000,
+    lazy = false,
+    ---@type snacks.Config
+    opts = {
+      -- your configuration comes here
+      -- or leave it empty to use the default settings
+      -- refer to the configuration section below
+      bigfile = { enabled = true },
+      dashboard = { enabled = true },
+      explorer = { enabled = true },
+      indent = { enabled = true },
+      input = { enabled = true },
+      picker = { enabled = true },
+      notifier = { enabled = true },
+      quickfile = { enabled = true },
+      scope = { enabled = true },
+      scroll = { enabled = true },
+      statuscolumn = { enabled = true },
+      words = { enabled = true },
+    },
+  },
+  {
+    'numToStr/Comment.nvim',
+    config = function()
+      require('Comment').setup()
 
-  -- Highlight todo, notes, etc in comments
-  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
-
+      vim.keymap.set('n', '<D-/>', 'gcc', { remap = true, desc = 'Toggle comment line' })
+      vim.keymap.set('v', '<D-/>', 'gc', { remap = true, desc = 'Toggle comment selection' })
+    end,
+    lazy = false,
+  },
+  {
+    'folke/noice.nvim',
+    event = 'VeryLazy',
+    opts = {
+      -- add any options here
+    },
+    dependencies = {
+      -- if you lazy-load any plugin below, make sure to add proper `module="..."` entries
+      'MunifTanjim/nui.nvim',
+      -- OPTIONAL:
+      --   `nvim-notify` is only needed, if you want to use the notification view.
+      --   If not available, we use `mini` as the fallback
+      'rcarriga/nvim-notify',
+    },
+  },
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
@@ -1006,3 +1114,8 @@ require('lazy').setup({
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+for i = 1, 9 do
+  vim.keymap.set('n', '<leader>' .. i, function()
+    bufferline.go_to(i, true)
+  end, { desc = 'Go to buffer ' .. i })
+end
