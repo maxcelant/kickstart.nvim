@@ -26,9 +26,14 @@ vim.opt.inccommand = 'split'
 vim.opt.cursorline = true
 vim.opt.scrolloff = 30
 vim.opt.confirm = true
+vim.opt.swapfile = false
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.g.copilot_no_tab_map = true
+vim.api.nvim_set_keymap('i', '<C-l>', 'copilot#Accept("<CR>")', { silent = true, expr = true })
+vim.api.nvim_set_keymap('n', '<leader>ce', ':Copilot enable<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>cd', ':Copilot disable<CR>', { noremap = true, silent = true })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -292,6 +297,9 @@ require('lazy').setup({
         --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
         --   },
         -- },
+        defaults = {
+          file_ignore_patterns = { '^vendor/' },
+        },
         -- pickers = {}
         extensions = {
           ['ui-select'] = {
@@ -642,6 +650,18 @@ require('lazy').setup({
     },
   },
   {
+    'crusj/bookmarks.nvim',
+    keys = {
+      { '<tab><tab>', mode = { 'n' } },
+    },
+    branch = 'main',
+    dependencies = { 'nvim-web-devicons' },
+    config = function()
+      require('bookmarks').setup()
+      require('telescope').load_extension 'bookmarks'
+    end,
+  },
+  {
     'akinsho/bufferline.nvim',
     version = '*',
     dependencies = 'nvim-tree/nvim-web-devicons',
@@ -810,7 +830,7 @@ require('lazy').setup({
       keywords = {
         TODO = { icon = '', color = 'info', alt = { 'TLDR' } },
         FIX = { icon = '', color = 'error', alt = { 'FIXME', 'BUG', 'FIXIT', 'ISSUE' } },
-        NOTE = { icon = '', color = 'hint', alt = { 'INSIGHT' } },
+        NOTE = { icon = '', color = 'info', alt = { 'INSIGHT' } },
         HACK = { icon = '', color = 'warning' },
         HMM = { icon = '?', color = 'warning', alt = { 'IMPORTANT' } },
       },
@@ -834,7 +854,7 @@ require('lazy').setup({
       notifier = { enabled = true },
       quickfile = { enabled = true },
       scope = { enabled = true },
-      scroll = { enabled = true },
+      scroll = { enabled = false },
       statuscolumn = { enabled = true },
       words = { enabled = true },
     },
